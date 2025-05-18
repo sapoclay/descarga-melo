@@ -40,7 +40,7 @@ chmod +x descarga-melo.sh
 
 2. Se abrirá una ventana con las siguientes opciones:
 
-![about-descarga-melo](https://github.com/user-attachments/assets/a558e54e-f8bc-4e67-a3dc-072bf57c572e)
+![descarga-melo](https://github.com/user-attachments/assets/a6a76b2f-1114-4083-93d0-dd6d99996f60)
 
    - "Nueva URL": Para introducir una nueva dirección de descarga
    - Lista de las últimas 3 URLs utilizadas (si existen)
