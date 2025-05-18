@@ -1,6 +1,8 @@
 # Descarga-melo. 
 ## Descarga de paquetes con un pequeño historial
 
+![about-descarga-melo](https://github.com/user-attachments/assets/79d6504c-84ee-4072-9af2-073e328019c3)
+
 Este script bash proporciona una interfaz gráfica para descargar archivos desde URLs, manteniendo un historial de las últimas descargas realizadas.
 
 ## Características
