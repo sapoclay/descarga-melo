@@ -39,12 +39,16 @@ chmod +x descarga-melo.sh
 ```
 
 2. Se abrirá una ventana con las siguientes opciones:
+
+![about-descarga-melo](https://github.com/user-attachments/assets/a558e54e-f8bc-4e67-a3dc-072bf57c572e)
+
    - "Nueva URL": Para introducir una nueva dirección de descarga
    - Lista de las últimas 3 URLs utilizadas (si existen)
+   - Limipar historial
 
-3. Si seleccionas "Nueva URL", se abrirá una ventana donde podrás introducir la dirección del archivo a descargar.
+4. Si seleccionas "Nueva URL", se abrirá una ventana donde podrás introducir la dirección del archivo a descargar.
 
-4. El archivo se descargará automáticamente en tu escritorio.
+5. El archivo se descargará automáticamente en tu escritorio.
 
 ## Almacenamiento del historial
 
