@@ -93,43 +93,94 @@ fi
 
 # Procesar selección de URL
 if [ "$RESPUESTA" = "Nueva URL" ]; then
-    # Solicitar nueva URL
-    URL=$(zenity --entry \
-        --title="Nueva URL" \
-        --text="Introduce la URL del paquete a descargar:" \
-        --width=400)
+    # Solicitar nuevas URLs (una o varias, separadas por salto de línea)
+    URLS=$(zenity --text-info \
+        --editable \
+        --title="Nuevas URLs" \
+        --text="Introduce una o varias URLs (una por línea):" \
+        --width=500 --height=200)
     
-    if [ -z "$URL" ]; then
+    if [ -z "$URLS" ]; then
         echo "Operación cancelada por el usuario"
         exit 0
     fi
+    # Convertir a array
+    IFS=$'\n' read -rd '' -a URL_ARRAY <<<"$URLS"
 else
-    URL="$RESPUESTA"
+    # Mostrar historial ampliado para seleccionar/borrar URLs
+    HISTORIAL_OPCION=$(zenity --list \
+        --title="Historial de URLs" \
+        --text="Selecciona una URL para descargar o bórrala del historial:" \
+        --column="Acción" --column="URL" \
+        $(awk '{print "Descargar", $0; print "Borrar", $0;}' "$HISTORIAL_FILE") \
+        --width=700 --height=400)
+    
+    ACCION=$(echo "$HISTORIAL_OPCION" | awk '{print $1}')
+    URL_SELEC=$(echo "$HISTORIAL_OPCION" | cut -d' ' -f2-)
+    if [ "$ACCION" = "Borrar" ]; then
+        grep -vxF "$URL_SELEC" "$HISTORIAL_FILE" > "$HISTORIAL_FILE.tmp" && mv "$HISTORIAL_FILE.tmp" "$HISTORIAL_FILE"
+        zenity --info --text="URL eliminada del historial."
+        exec "$0"
+    elif [ "$ACCION" = "Descargar" ]; then
+        URL_ARRAY=("$URL_SELEC")
+    else
+        echo "Operación cancelada por el usuario"
+        exit 0
+    fi
 fi
 
-# Guardar URL en el historial
-echo "$URL" >> "$HISTORIAL_FILE"
-
-# Obtener el nombre del archivo desde la URL
-FILENAME=$(basename "$URL")
-
-# Ruta del escritorio del usuario
-DESKTOP="$HOME/Escritorio"
-
-# Crear directorio Escritorio si no existe
-if [ ! -d "$DESKTOP" ]; then
-    mkdir -p "$DESKTOP"
+# Selección de carpeta de destino
+DESTINO=$(zenity --file-selection --directory --title="Selecciona la carpeta de destino" --filename="$HOME/Escritorio/")
+if [ -z "$DESTINO" ]; then
+    echo "Operación cancelada por el usuario"
+    exit 0
 fi
 
-echo "Descargando $FILENAME..."
-
-# Descargar el archivo usando wget
-wget -P "$DESKTOP" "$URL"
-
-# Verificar si la descarga fue exitosa
-if [ $? -eq 0 ]; then
-    echo "Descarga completada: $DESKTOP/$FILENAME"
-else
-    echo "Error durante la descarga"
-    exit 1
-fi
+for URL in "${URL_ARRAY[@]}"; do
+    # Validación básica de URL
+    if ! [[ "$URL" =~ ^https?:// ]]; then
+        zenity --error --text="URL no válida: $URL"
+        continue
+    fi
+    # Guardar URL en el historial si no existe
+    grep -qxF "$URL" "$HISTORIAL_FILE" || echo "$URL" >> "$HISTORIAL_FILE"
+    # Nombre de archivo personalizado
+    DEFAULT_FILENAME=$(basename "$URL")
+    FILENAME=$(zenity --entry \
+        --title="Nombre de archivo" \
+        --text="Introduce el nombre con el que se guardará el archivo (deja vacío para usar el nombre original):" \
+        --entry-text="$DEFAULT_FILENAME" \
+        --width=400)
+    if [ -z "$FILENAME" ]; then
+        FILENAME="$DEFAULT_FILENAME"
+    fi
+    # Descargar con barra de progreso y reintentos
+    EXITO=0
+    for intento in {1..3}; do
+        wget -O "$DESTINO/$FILENAME" "$URL" 2>&1 | \
+        stdbuf -oL grep --line-buffered "%" | \
+        stdbuf -oL awk '{gsub(/%/, ""); if ($1 ~ /^[0-9]+$/) print $1;}' | \
+        zenity --progress --title="Descargando $FILENAME (Intento $intento)" --percentage=0 --auto-close --width=400
+        if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            EXITO=1
+            break
+        else
+            zenity --question --text="Error al descargar $FILENAME. ¿Reintentar? ($intento/3)" --ok-label="Reintentar" --cancel-label="Omitir"
+            [ $? -ne 0 ] && break
+        fi
+    done
+    if [ $EXITO -eq 1 ]; then
+        zenity --notification --text="Descarga completada: $FILENAME"
+        # Preguntar si desea abrir el archivo o carpeta
+        zenity --question --title="Abrir archivo" --text="¿Deseas abrir el archivo descargado o la carpeta de destino?" --ok-label="Abrir archivo" --cancel-label="Abrir carpeta"
+        if [ $? -eq 0 ]; then
+            xdg-open "$DESTINO/$FILENAME"
+        else
+            xdg-open "$DESTINO"
+        fi
+    else
+        zenity --error --text="No se pudo descargar $FILENAME tras varios intentos."
+    fi
+    # Siguiente descarga (si hay más)
+    sleep 1
+done
