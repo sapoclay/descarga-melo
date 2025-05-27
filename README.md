@@ -15,9 +15,9 @@ Este script bash proporciona una interfaz gráfica para descargar archivos desde
 - Validación básica de URLs antes de descargar
 - Soporte para reintentos automáticos si la descarga falla (hasta 3 intentos)
 - Permite abrir el archivo descargado o la carpeta de destino al finalizar
-- Historial ampliado: puedes ver, borrar individualmente o reutilizar cualquier URL previa
+- Historial simple: puedes ver, copiar al portapapeles o reutilizar cualquier URL previa
 - Mantiene un archivo de historial en `$HOME/.url_download_history`
-- Permite limpiar todo el historial o gestionar URLs una a una
+- Permite limpiar todo el historial desde el menú principal
 - Descarga automática usando wget
 - Verifica automáticamente si Zenity está instalado
 - Permite cancelar la operación en cualquier momento
@@ -27,6 +27,7 @@ Este script bash proporciona una interfaz gráfica para descargar archivos desde
 - Sistema operativo Linux. Funciona con Ubuntu y con Debian.
 - Zenity (para la interfaz gráfica)
 - wget (para las descargas)
+- xclip (para poder copiar las URL del historial al portapapeles)
 
 ## Instalación
 
@@ -35,7 +36,12 @@ Este script bash proporciona una interfaz gráfica para descargar archivos desde
 sudo apt-get install zenity
 ```
 
-2. Descarga este script y dale permisos de ejecución:
+2. Es necesario tener instalado xclip:
+```bash
+sudo apt-get install xclip
+```
+
+3. Descarga este script y dale permisos de ejecución:
 ```bash
 chmod +x descarga-melo.sh
 ```
@@ -49,7 +55,7 @@ chmod +x descarga-melo.sh
 
 2. Se abrirá una ventana con las siguientes opciones:
    - "Nueva URL": Para introducir una o varias direcciones de descarga (una por línea)
-   - Historial completo de URLs utilizadas (puedes descargar o borrar cualquiera)
+   - Historial de URLs previas (con opciones para descargar o copiar al portapapeles)
    - Limpiar historial
 
 3. Si seleccionas "Nueva URL", podrás introducir varias URLs a la vez. Luego podrás elegir la carpeta de destino y el nombre de cada archivo.

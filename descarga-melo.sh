@@ -24,28 +24,27 @@ show_about() {
     # Texto de la ventana About sin imagen
     zenity --info \
         --title="Acerca de Descarga-melo" \
-        --text="<span size='x-large'><b>Descarga-melo v1.0</b></span>\n\n<span size='large'>Una herramienta simple para descargar archivos con historial de URLs recientes.</span>\n\n<span>Esta aplicación te permite:\n• Descargar archivos desde URLs\n• Mantener un historial de las últimas 3 URLs utilizadas\n• Descargar archivos directamente al escritorio\n• Gestionar fácilmente las descargas anteriores</span>\n\n<b>Creado por:</b> entreunosyceros\n<b>Licencia:</b> Software Libre\n<b>Versión:</b> 1.0" \
+        --text="<span size='x-large'><b>Descarga-melo v1.0</b></span>\n\n<span size='large'>Una herramienta simple para descargar archivos con historial de URLs.</span>\n\n<span>Esta aplicación te permite:\n• Introducir una o varias URLs nuevas para descargar\n• Mantener un historial de las URLs utilizadas\n• Reutilizar URLs del historial para nuevas descargas\n• Copiar URLs del historial al portapapeles\n• Limpiar todo el historial cuando lo necesites\n• Reintentar descargas fallidas automáticamente\n• Personalizar el nombre de los archivos descargados\n• Elegir la carpeta de destino para las descargas\n• Abrir los archivos o su carpeta al terminar</span>\n\n<b>Creado por:</b> entreunosyceros\n<b>Licencia:</b> Software Libre\n<b>Versión:</b> 1.0" \
         --ok-label="Volver" \
-        --width=400 --height=300
+        --width=500 --height=400
 }
 
-# Mostrar diálogo con las opciones usando tabs
+# Mostrar diálogo principal con las opciones
 RESPUESTA=$(zenity --list \
     --title="Descarga-melo" \
-    --text="Selecciona una URL anterior o introduce una nueva:" \
+    --text="Selecciona una opción:" \
     --radiolist \
     --column="" \
     --column="Opción" \
-    --column="URL" \
-    TRUE "Nueva URL" "Introducir una nueva URL" \
-    $(while IFS='|' read -r url desc; do
-        echo "FALSE" "$url" "$desc"
-    done <<< $(echo "$LISTA_URLS" | tr '!' '\n' | tail -n +2)) \
-    --ok-label="Descargar" \
+    TRUE "Nueva URL" \
+    $(while IFS= read -r url; do
+        echo "FALSE" "$url"
+    done < "$HISTORIAL_FILE") \
+    --ok-label="Siguiente" \
     --cancel-label="Cancelar" \
     --extra-button "About" \
     --extra-button "Limpiar historial" \
-    --width=600 --height=400)
+    --width=1000 --height=600)
 
 # Guardar el código de retorno inmediatamente
 RETURN_CODE=$?
@@ -98,6 +97,7 @@ if [ "$RESPUESTA" = "Nueva URL" ]; then
         --editable \
         --title="Nuevas URLs" \
         --text="Introduce una o varias URLs (una por línea):" \
+        --filename=<(echo -e "https://ejemplo1.com/archivo1.zip\nhttps://ejemplo2.com/archivo2.pdf\nhttps://ejemplo3.com/archivo3.mp4") \
         --width=500 --height=200)
     
     if [ -z "$URLS" ]; then
@@ -107,19 +107,29 @@ if [ "$RESPUESTA" = "Nueva URL" ]; then
     # Convertir a array
     IFS=$'\n' read -rd '' -a URL_ARRAY <<<"$URLS"
 else
-    # Mostrar historial ampliado para seleccionar/borrar URLs
-    HISTORIAL_OPCION=$(zenity --list \
-        --title="Historial de URLs" \
-        --text="Selecciona una URL para descargar o bórrala del historial:" \
-        --column="Acción" --column="URL" \
-        $(awk '{print "Descargar", $0; print "Borrar", $0;}' "$HISTORIAL_FILE") \
-        --width=700 --height=400)
+    # URL seleccionada del historial
+    URL_SELEC="$RESPUESTA"
     
-    ACCION=$(echo "$HISTORIAL_OPCION" | awk '{print $1}')
-    URL_SELEC=$(echo "$HISTORIAL_OPCION" | cut -d' ' -f2-)
-    if [ "$ACCION" = "Borrar" ]; then
-        grep -vxF "$URL_SELEC" "$HISTORIAL_FILE" > "$HISTORIAL_FILE.tmp" && mv "$HISTORIAL_FILE.tmp" "$HISTORIAL_FILE"
-        zenity --info --text="URL eliminada del historial."
+    # Preguntar qué hacer con la URL seleccionada
+    TEXTO_ESCAPADO=$(echo "$URL_SELEC" | sed 's/&/\&amp;/g')
+    ACCION=$(zenity --list \
+        --title="Seleccionar acción" \
+        --text="¿Qué deseas hacer con la URL seleccionada?\n\nURL: $TEXTO_ESCAPADO" \
+        --column="Acción" \
+        "Descargar" \
+        "Copiar al portapapeles" \
+        --ok-label="Aceptar" \
+        --cancel-label="Cancelar" \
+        --width=800 --height=300)
+    
+    if [ -z "$ACCION" ]; then
+        echo "Operación cancelada por el usuario"
+        exit 0
+    fi
+
+    if [ "$ACCION" = "Copiar al portapapeles" ]; then
+        echo -n "$URL_SELEC" | xclip -selection clipboard
+        zenity --info --text="URL copiada al portapapeles"
         exec "$0"
     elif [ "$ACCION" = "Descargar" ]; then
         URL_ARRAY=("$URL_SELEC")
